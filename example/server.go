@@ -5,31 +5,22 @@ import (
 	"net/http"
 	"net/http/httputil"
 
-	"github.com/brianm/drdb"
-	"github.com/codegangsta/negroni"
-	"github.com/gorilla/mux"
-	nlogrus "github.com/meatballhat/negroni-logrus"
+	"github.com/brianm/rpcdb"
+	"github.com/justinas/alice"
 )
 
 func main() {
-	r := mux.NewRouter()
-	r.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
-		bytes, err := httputil.DumpRequest(req, true)
-		if err != nil {
-			w.WriteHeader(500)
-			fmt.Fprintf(w, "%s", err)
-			return
-		}
-		w.Write(bytes)
-	})
+	chain := alice.New(rpcdb.NewMiddleware).ThenFunc(handler)
 
-	n := negroni.New()
-	n.Use(nlogrus.NewMiddleware())
-	n.Use(drdb.NewMiddleware())
-	n.UseHandler(r)
-	n.Run(":3030")
+	http.ListenAndServe(":3000", chain)
 }
 
-/*
-https://github.com/mholt/binding
-*/
+func handler(w http.ResponseWriter, req *http.Request) {
+	bytes, err := httputil.DumpRequest(req, true)
+	if err != nil {
+		w.WriteHeader(500)
+		fmt.Fprintf(w, "%s", err)
+		return
+	}
+	w.Write(bytes)
+}
