@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	chain := alice.New(rpcdb.NewMiddleware, logger).ThenFunc(handler)
+	chain := alice.New(rpcdb.Constructor("example"), logger).ThenFunc(handler)
 
 	err := http.ListenAndServe("127.0.0.1:3000", chain)
 	if err != nil {

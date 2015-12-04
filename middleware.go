@@ -14,12 +14,21 @@ import (
 
 // Middleware represents the middleware
 type middleware struct {
+	name string
 	next http.Handler
 }
 
-// NewMiddleware creates the middleware
-func NewMiddleware(next http.Handler) http.Handler {
-	return &middleware{next: next}
+// NewMiddleware directly builds the middleware handler
+func NewMiddleware(name string, next http.Handler) http.Handler {
+	return &middleware{name, next}
+}
+
+// Constructor returns a constructor that creates middleware for the
+// given service name
+func Constructor(name string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return &middleware{name, next}
+	}
 }
 
 func isDebug(*http.Request) bool {
