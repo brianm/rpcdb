@@ -25,6 +25,7 @@ func TestExample(t *testing.T) {
 	req.Header.Add("Debug-Breakpoint", "receive example:/hello")            // example server receives /hello
 	req.Header.Add("Debug-Breakpoint", "reply example:/hello")              // example server responds to /hello
 	req.Header.Add("Debug-Breakpoint", "request example:*")                 // example server issues any rpc
+	req.Header.Add("Debug-Breakpoint", "response example:*")                // example server gets response to any rpc
 
 	req.Header.Add("Debug-Breakpoint", "receive other:*") // other server receives any, will be proxied along
 

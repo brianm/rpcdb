@@ -98,8 +98,21 @@ Additionally, AOP style cut point definitions might be useful to mine for ideas.
 
 # Breakpoint Expression Language
 
-We will need some kind of expression language that can describe breakpoints in a determistic way which is very easy to
-implement in every language and rpc system. This might take some thought.
+Declaration of a breakpoint is via the `Debug-Breakpoint` header. A breakpoint declaration is for an event type against
+a URN for where the event occurs, for example:
+
+```
+Debug-Breakpoint: receive example:/hello
+```
+
+Would trigger a breakpoint in the `example` service when `/hello` is invoked. The naming is arbitrary, but it'll use URI
+style encoding and `:` delimiter between `<service-identifier>:<rpc-identifier>`, so in a multi-dc topology you might
+see something like `us-west-2/identity:facebook-auth` to match any RPC sent to an identity service instance in the
+`us-west-2` region invoking an endpoint named `facebook-auth`. This is different from the HTTP path pattern in the first
+example. Both are totally valid.
+
+We'll probably need to evolve this breakpoint descriptor language, and certainly provide naming guidelines, but we'll
+get to that :-)
 
 # rpcdbd Server Architecture
 
