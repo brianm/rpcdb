@@ -1,8 +1,8 @@
-# Distributed RPC Debugger (drdb)
+# Distributed RPC Debugger (rpcdb)
 
 ## The Debugger Client
 
-Debugger interface is in a web browser talking to drdbd service
+Debugger interface is in a web browser talking to rpcdbd service
 instance. Can issue requests directly from the debugger with addition
 of a browser plugin, otherwise will need to C&P to curl most likely
 ugh. Maybe client should be an [electrum](http://electron.atom.io/)
@@ -12,15 +12,15 @@ which is likely what folks will want. Breaking out to a real client
 via electron also allows for easier non-HTTP requests to issue
 directly from the client.
 
-Alternately, we initiate debug rpc chains from the drdbd service
-instance itself. This means the drdbd needs to know how to fire off
+Alternately, we initiate debug rpc chains from the rpcdbd service
+instance itself. This means the rpcdbd needs to know how to fire off
 arbitrary requests, which might be annoying, but it is also amenable
 to the microservice plugin approach -- if you want a new type of
 request, implement a microservice that knows how to do it and have it
-register with drdbd. Actually, I kind of like this model.
+register with rpcdbd. Actually, I kind of like this model.
 
 So the debugger client is back to being an in-browser webapp which
-communicates with drdbd to fire off initiating requests. RPC protocols
+communicates with rpcdbd to fire off initiating requests. RPC protocols
 which can be debugged pretty much require the ability to add arbitrary
 header information in an envelope. I am going to push out of scope
 things that don't have an envelope. As almost everyone tunnels over
@@ -32,7 +32,7 @@ something like:
 ```
 POST /wombat HTTP/1.1
 Host: api.xn.io
-Debug-Session: https://drdbd1.internal/abc123
+Debug-Session: https://rpcdbd1.internal/abc123
 Debug-Signature: <digital signature>
 Debug-Breakpoint: <some breakpoint definition expression>
 Debug-Breakpoint: <another breakpoint>,<a third breakpoint>
@@ -52,7 +52,7 @@ Importantly, the expression language must not use `,` as
 and it is nice to not break http!
 
 The `Debug-Signature` header signs the debug request/session from
-drdbd in such a manner that each piece of middleware can confirm this
+rpcdbd in such a manner that each piece of middleware can confirm this
 is a bona fide debug request. This is needed to prevent attacks via
 debug middleware.
 
@@ -133,7 +133,7 @@ We will need some kind of expression language that can describe
 breakpoints in a determistic way which is very easy to implement in
 every language and rpc system. This might take some thought.
 
-# DRDBD Server Architecture
+# rpcdbD Server Architecture
 
 Because the debugger server needs to support arbitrarily many RPC
 systems and many are proprietary it seems the drbdb daemon needs to
@@ -145,7 +145,7 @@ One way of doing this would be to fully embrace REST and microservices
 to support microservice based plugins. Adding an RPC system, message
 body type, etc becomes writing a microservice that understands it and
 can interact with the debugger client. The plugin registers with the
-drdbd service and then can be made use of as needed. This implies an
+rpcdbd service and then can be made use of as needed. This implies an
 [I-Tier style](https://engineering.groupon.com/2013/misc/i-tier-dismantling-the-monoliths/)
 composite client interface where parts of the debugger interaction
 interface are owned completely by plugins. For instance, understanding
@@ -154,9 +154,9 @@ implemented in the core because unless you are Amazon you have no idea
 how it should work.
 
 A nice aspect of this model is that the core RPC mechanisms
-(http/json, thift, grpc -- basically the widely used OSS ones) can be
+(http/json, thrift, grpc -- basically the widely used OSS ones) can be
 bundled in and started automagically, then proprietary or experimental
-ones can be run completely seperately and register with the drdbd
+ones can be run completely separately and register with the rpcdbd
 instance.
 
 # Pseudo-Random Notes

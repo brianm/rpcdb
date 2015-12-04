@@ -13,13 +13,13 @@ import (
 )
 
 // Middleware represents the middleware
-type Middleware struct {
+type middleware struct {
 	next http.Handler
 }
 
 // NewMiddleware creates the middleware
 func NewMiddleware(next http.Handler) http.Handler {
-	return &Middleware{next: next}
+	return &middleware{next: next}
 }
 
 func isDebug(*http.Request) bool {
@@ -70,8 +70,8 @@ func copyReponseWriter(w http.ResponseWriter) *debugResponseWriter {
 }
 
 // TODO convert to alice style middleware
-func (l *Middleware) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	body, err := multibuf.New(req.Body, multibuf.MaxBytes(128*1024*1024), multibuf.MemBytes(1024*1024))
+func (l *middleware) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	body, err := multibuf.New(req.Body, multibuf.MaxBytes(128*1024*1024), multibuf.MemBytes(128*1024*1024))
 	if err != nil || body == nil {
 		panic(err)
 	}
