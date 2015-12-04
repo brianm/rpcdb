@@ -2,15 +2,11 @@
 
 ## The Debugger Client
 
-Debugger interface is in a web browser talking to rpcdbd service
-instance. Can issue requests directly from the debugger with addition
-of a browser plugin, otherwise will need to C&P to curl most likely
-ugh. Maybe client should be an [electrum](http://electron.atom.io/)
-based application instead of browser based. Browser based is super
-convenient, but rather impinges on ability to initiate arbitrary HTTP,
-which is likely what folks will want. Breaking out to a real client
-via electron also allows for easier non-HTTP requests to issue
-directly from the client.
+Debugger interface is in a web browser talking to rpcdbd (the rpcdb daemon) service instance. Can issue requests
+directly from the debugger with addition of a browser plugin, otherwise will need to C&P to curl most likely ugh. Maybe
+client should be an [electrum](http://electron.atom.io/) based application instead of browser based. Browser based is
+super convenient, but rather impinges on ability to initiate arbitrary HTTP, which is likely what folks will want.
+Breaking out to a real client via electron also allows for easier non-HTTP requests to issue directly from the client.
 
 Alternately, we initiate debug rpc chains from the rpcdbd service
 instance itself. This means the rpcdbd needs to know how to fire off
@@ -133,7 +129,7 @@ We will need some kind of expression language that can describe
 breakpoints in a determistic way which is very easy to implement in
 every language and rpc system. This might take some thought.
 
-# rpcdbD Server Architecture
+# rpcdbd Server Architecture
 
 Because the debugger server needs to support arbitrarily many RPC
 systems and many are proprietary it seems the drbdb daemon needs to
