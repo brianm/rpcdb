@@ -41,6 +41,10 @@ combined with `,`](http://www.w3.org/Protocols/rfc2616/rfc2616-sec4.html) and it
 The `Debug-Signature` header signs the debug request/session from rpcdbd in such a manner that each piece of middleware
 can confirm this is a bona fide debug request. This is needed to prevent attacks via debug middleware.
 
+For non-HTTP mechanisms we just need support for adding and mucking with headers. I *think* all the widely
+used things support this now. If they do not, then support will need to be built into the messages, which would be
+awkward but possible (ie, for Sun RPC).
+
 # Debug Middleware
 
 Services instrumented for debugging will generally do so through transparent middleware. This requires two types of
