@@ -65,13 +65,13 @@ order make debug sessions amenable to human time scales.
 The general flow of RPC debug hooks is:
 
 * REQUEST hook in client middleware
-  * Client sends request to the server
+    * Client sends request to the server
 * RECEIVE hook in server middleware
-  * Server handles RPC
+    * Server handles RPC
 * REPLY hook in server middleware
-  * Server sends the reply back to client
+    * Server sends the reply back to client
 * RESPONSE hook in client middleware
-  * Client receives the response
+    * Client receives the response
 
 At each step the debugger can manipulate the input and output, inject additional breakpoints, remove breakpoints, or
 terminate the flow.
