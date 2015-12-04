@@ -26,7 +26,17 @@ func TestExample(t *testing.T) {
 	req.Header.Add("Debug-Breakpoint", "reply example:/hello")              // example server responds to /hello
 	req.Header.Add("Debug-Breakpoint", "request example:*")                 // example server issues any rpc
 
-	m.ServeHTTP(w, req)
+	req.Header.Add("Debug-Breakpoint", "receive other:*") // other server receives any, will be proxied along
+
+	go m.ServeHTTP(w, req)
+
+	// rpcdbd will be called for 'receive example:/hello'
+	// tell rpcdbd to proceed, but change body to "howdy"
+	// stub is invoked, body is "howdy"
+	// rpcdbd will be called for 'reply example:/hello' with body "hello world"
+	// tell rpcdbd to proceed, but change body to "howdy world!"
+	// check that w.Body.String() == "howdy world!"
+	// ^^ all assumes semaphores in stub and so on to do the right things :-)
 }
 
 type Stub struct{}
