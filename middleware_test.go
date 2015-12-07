@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestExample(t *testing.T) {
+func _TestExample(t *testing.T) {
 	// stand up an rpcdb daemon at http://<something or other>
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("content-type", "application/json")
