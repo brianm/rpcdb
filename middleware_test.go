@@ -1,6 +1,8 @@
 package rpcdb
 
 import (
+	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -8,8 +10,13 @@ import (
 )
 
 func TestExample(t *testing.T) {
+	// stand up an rpcdb daemon at http://<something or other>
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("content-type", "application/json")
+		fmt.Fprintln(w, `{"body":"howdy world"}`)
+	}))
+	defer ts.Close()
 
-	// stand up an rpcdb daemon at http://127.0.0.1:1234/
 	// start a debug session named "abc123"
 
 	handler := Stub{}
@@ -21,16 +28,22 @@ func TestExample(t *testing.T) {
 		t.Fatalf("unable to create test request: %s", err)
 	}
 
-	req.Header.Add("Debug-Session", "http://127.0.0.1:1234/session/abc123") // debug session URL
-	req.Header.Add("Debug-Breakpoint", "receive example:/hello")            // example server receives /hello
-	req.Header.Add("Debug-Breakpoint", "reply example:/hello")              // example server responds to /hello
-	req.Header.Add("Debug-Breakpoint", "request example:*")                 // example server issues any rpc
-	req.Header.Add("Debug-Breakpoint", "response example:*")                // example server gets response to any rpc
+	req.Header.Add("Debug-Session", ts.URL)                      // debug session URL
+	req.Header.Add("Debug-Breakpoint", "receive example:/hello") // example server receives /hello
+	//req.Header.Add("Debug-Breakpoint", "reply example:/hello")   // example server responds to /hello
+	//req.Header.Add("Debug-Breakpoint", "request example:*")      // example server issues any rpc
+	//req.Header.Add("Debug-Breakpoint", "response example:*")     // example server gets response to any rpc
+	//req.Header.Add("Debug-Breakpoint", "receive other:*")        // other server receives any, will be proxied along
 
-	req.Header.Add("Debug-Breakpoint", "receive other:*") // other server receives any, will be proxied along
+	m.ServeHTTP(w, req)
 
-	go m.ServeHTTP(w, req)
-
+	body, err := ioutil.ReadAll(w.Body)
+	if err != nil {
+		t.Fatalf("error reading response body: %s", err)
+	}
+	if string(body) != "howdy" {
+		t.Errorf("Expected body to be transformed to 'howdy world' got '%s'", body)
+	}
 	// rpcdbd will be called for 'receive example:/hello'
 	// tell rpcdbd to proceed, but change body to "howdy"
 	// stub is invoked, body is "howdy"

@@ -78,7 +78,6 @@ func copyReponseWriter(w http.ResponseWriter) *debugResponseWriter {
 	return drw
 }
 
-// TODO convert to alice style middleware
 func (l *middleware) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	body, err := multibuf.New(req.Body, multibuf.MaxBytes(128*1024*1024), multibuf.MemBytes(128*1024*1024))
 	if err != nil || body == nil {
