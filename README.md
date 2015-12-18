@@ -136,6 +136,8 @@ A nice aspect of this model is that the core RPC mechanisms (http/json, thrift, 
 ones) can be bundled in and started automagically, then proprietary or experimental ones can be run completely
 separately and register with the rpcdbd instance.
 
+The complexity of this model scares me. There's some middle ground, we'll find it when we need it.
+
 # Pseudo-Random Notes
 
 Middleware will probably want to reserve a very small amount of resources for debug sessions, for instance supporting up
