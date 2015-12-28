@@ -95,17 +95,17 @@ func Test500OnBadBreakpoint(t *testing.T) {
 
 }
 
-func _TestReceiveTransform(t *testing.T) {
-	// stand up an rpcdb daemon at http://<something or other>
+func TestReceiveTransform(t *testing.T) {
+	// stand up a mocked rpcdb daemon
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("content-type", "application/json")
+		// always respond with a body replacement
 		fmt.Fprintln(w, `{"body":"howdy world"}`)
 	}))
 	defer ts.Close()
 
-	// start a debug session named "abc123"
-
-	handler := Stub{200, []byte("hello world")}
+	// nil body makes the stub return whatever the input was :-)
+	handler := Stub{200, nil}
 	m := NewMiddleware("example", handler)
 	w := httptest.NewRecorder()
 
@@ -120,7 +120,7 @@ func _TestReceiveTransform(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error reading response body: %s", err)
 	}
-	if string(body) != "howdy" {
+	if string(body) != "howdy world" {
 		t.Errorf("Expected body to be transformed to 'howdy world' got '%s'", body)
 	}
 }
@@ -132,5 +132,11 @@ type Stub struct {
 
 func (s Stub) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(s.code)
-	w.Write(s.body)
+	if s.body == nil {
+		bytes, _ := ioutil.ReadAll(req.Body)
+		req.Body.Close()
+		w.Write(bytes)
+	} else {
+		w.Write(s.body)
+	}
 }

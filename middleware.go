@@ -30,14 +30,20 @@ func (m *middleware) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 func (m middleware) serveDebug(w http.ResponseWriter, req *http.Request) {
-	_, err := ParseBreakpoints(req.Header)
+	bps, err := BuildSession(m.name, req.Header)
 	if err != nil {
 		m.failWithError(w, err)
 	}
-}
 
-var debugBreakpointHeaderKey = http.CanonicalHeaderKey("Debug-Breakpoint")
-var debugSessionHeaderKey = http.CanonicalHeaderKey("Debug-Breakpoint")
+	// TODO ensure only match receive once, even if multiple BP's trigger
+	req, err = bps.Receive(req)
+	if err != nil {
+		m.failWithError(w, err)
+		return
+	}
+
+	m.next.ServeHTTP(w, req)
+}
 
 func isDebug(req *http.Request) bool {
 	if _, ok := req.Header[debugBreakpointHeaderKey]; ok {
