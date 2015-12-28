@@ -14,10 +14,10 @@ func TestParseReceiveExpr(t *testing.T) {
 		t.Errorf("expected receive hook, got %s", bp.Hook)
 	}
 	if bp.ServiceName != "example" {
-		t.Errorf("expected service=example, got service=%s", bp.Hook)
+		t.Errorf("expected service=example, got service=%s", bp.ServiceName)
 	}
 	if bp.RPCName != "/hello" {
-		t.Errorf("expected rpc=/hello, got rpc=%s", bp.Hook)
+		t.Errorf("expected rpc=/hello, got RPCName=%s", bp.RPCName)
 	}
 }
 
