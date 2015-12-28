@@ -7,7 +7,30 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"github.com/justinas/alice"
+	"log"
+"net/http/httputil"
 )
+
+func ExampleConstructor() {
+	chain := alice.New(Constructor("example")).ThenFunc(handler)
+
+	err := http.ListenAndServe("127.0.0.1:3000", chain)
+	if err != nil {
+		log.Panicf("unable to start: %s", err)
+	}
+}
+
+
+func handler(w http.ResponseWriter, req *http.Request) {
+	bytes, err := httputil.DumpRequest(req, true)
+	if err != nil {
+		w.WriteHeader(500)
+		fmt.Fprintf(w, "%s", err)
+		return
+	}
+	w.Write(bytes)
+}
 
 func _TestExample(t *testing.T) {
 	// stand up an rpcdb daemon at http://<something or other>
@@ -95,7 +118,7 @@ func Test500OnBadBreakpoint(t *testing.T) {
 
 }
 
-func TestReceiveTransform(t *testing.T) {
+func TestReceiveBodyTransform(t *testing.T) {
 	// stand up a mocked rpcdb daemon
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("content-type", "application/json")
@@ -123,6 +146,11 @@ func TestReceiveTransform(t *testing.T) {
 	if string(body) != "howdy world" {
 		t.Errorf("Expected body to be transformed to 'howdy world' got '%s'", body)
 	}
+}
+
+
+func TestReplyBodyTransform(t *testing.T) {
+   t.Error("Not yet implemented")
 }
 
 type Stub struct {
