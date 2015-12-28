@@ -73,6 +73,28 @@ func TestIsDebugNonCanonicalHeaders(t *testing.T) {
 	}
 }
 
+func Test500OnBadBreakpoint(t *testing.T) {
+	req, _ := http.NewRequest("GET", "/", nil)
+	req.Header.Add("debug-breakpoint", "buggy example:*")
+	req.Header.Add("debug-session", "http://example/123")
+
+	handler := Stub{200, []byte("hello world")}
+	m := NewMiddleware("example", handler)
+	w := httptest.NewRecorder()
+
+	m.ServeHTTP(w, req)
+	if w.Code != 500 {
+		t.Errorf("Expected 500 status code, got %d", w.Code)
+	}
+
+	if w.Header().Get("Content-Type") != "text/plain" {
+		body, _ := ioutil.ReadAll(w.Body)
+		t.Log(string(body))
+		t.Errorf("Expected text/plain body, got %s", w.Header().Get("Content-Type"))
+	}
+
+}
+
 func _TestReceiveTransform(t *testing.T) {
 	// stand up an rpcdb daemon at http://<something or other>
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -87,13 +109,10 @@ func _TestReceiveTransform(t *testing.T) {
 	m := NewMiddleware("example", handler)
 	w := httptest.NewRecorder()
 
-	req, err := http.NewRequest("POST", "http://example.com/hello", strings.NewReader("hello"))
-	if err != nil {
-		t.Fatalf("unable to create test request: %s", err)
-	}
+	req, _ := http.NewRequest("POST", "http://example.com/hello", strings.NewReader("hello"))
 
 	req.Header.Add("Debug-Session", ts.URL)                      // debug session URL
-	req.Header.Add("Debug-Breakpoint", "receive example:/hello") // example server receives /hello
+	req.Header.Add("Debug-Breakpoint", "receive example:/hello") // server receives /hello
 
 	m.ServeHTTP(w, req)
 

@@ -23,9 +23,16 @@ func Constructor(name string) func(http.Handler) http.Handler {
 
 func (m *middleware) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if isDebug(req) {
-
+		m.serveDebug(w, req)
 	} else {
 		m.next.ServeHTTP(w, req)
+	}
+}
+
+func (m middleware) serveDebug(w http.ResponseWriter, req *http.Request) {
+	_, err := ParseBreakpoints(req.Header)
+	if err != nil {
+		m.failWithError(w, err)
 	}
 }
 
@@ -39,4 +46,10 @@ func isDebug(req *http.Request) bool {
 		}
 	}
 	return false
+}
+
+func (m middleware) failWithError(w http.ResponseWriter, e error) {
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(500)
+	w.Write([]byte(e.Error()))
 }
