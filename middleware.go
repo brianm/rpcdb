@@ -29,9 +29,12 @@ func (m *middleware) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+var debugBreakpointHeaderKey = http.CanonicalHeaderKey("Debug-Breakpoint")
+var debugSessionHeaderKey = http.CanonicalHeaderKey("Debug-Breakpoint")
+
 func isDebug(req *http.Request) bool {
-	if _, ok := req.Header[http.CanonicalHeaderKey("Debug-Breakpoint")]; ok {
-		if _, ok := req.Header[http.CanonicalHeaderKey("Debug-Session")]; ok {
+	if _, ok := req.Header[debugBreakpointHeaderKey]; ok {
+		if _, ok := req.Header[debugSessionHeaderKey]; ok {
 			return true
 		}
 	}
