@@ -9,7 +9,7 @@ import (
 	"testing"
 	"github.com/justinas/alice"
 	"log"
-"net/http/httputil"
+	"net/http/httputil"
 )
 
 func ExampleConstructor() {
@@ -30,50 +30,6 @@ func handler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	w.Write(bytes)
-}
-
-func _TestExample(t *testing.T) {
-	// stand up an rpcdb daemon at http://<something or other>
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Add("content-type", "application/json")
-		fmt.Fprintln(w, `{"body":"howdy world"}`)
-	}))
-	defer ts.Close()
-
-	// start a debug session named "abc123"
-
-	handler := Stub{200, []byte("hello world")}
-	m := NewMiddleware("example", handler)
-	w := httptest.NewRecorder()
-
-	req, err := http.NewRequest("POST", "http://example.com/hello", strings.NewReader("hello"))
-	if err != nil {
-		t.Fatalf("unable to create test request: %s", err)
-	}
-
-	req.Header.Add("Debug-Session", ts.URL)                      // debug session URL
-	req.Header.Add("Debug-Breakpoint", "receive example:/hello") // example server receives /hello
-	//req.Header.Add("Debug-Breakpoint", "reply example:/hello")   // example server responds to /hello
-	//req.Header.Add("Debug-Breakpoint", "request example:*")      // example server issues any rpc
-	//req.Header.Add("Debug-Breakpoint", "response example:*")     // example server gets response to any rpc
-	//req.Header.Add("Debug-Breakpoint", "receive other:*")        // other server receives any, will be proxied along
-
-	m.ServeHTTP(w, req)
-
-	body, err := ioutil.ReadAll(w.Body)
-	if err != nil {
-		t.Fatalf("error reading response body: %s", err)
-	}
-	if string(body) != "howdy" {
-		t.Errorf("Expected body to be transformed to 'howdy world' got '%s'", body)
-	}
-	// rpcdbd will be called for 'receive example:/hello'
-	// tell rpcdbd to proceed, but change body to "howdy"
-	// stub is invoked, body is "howdy"
-	// rpcdbd will be called for 'reply example:/hello' with body "hello world"
-	// tell rpcdbd to proceed, but change body to "howdy world!"
-	// check that w.Body.String() == "howdy world!"
-	// ^^ all assumes semaphores in stub and so on to do the right things :-)
 }
 
 func TestIsDebugCanonicalHeaders(t *testing.T) {
@@ -118,6 +74,8 @@ func Test500OnBadBreakpoint(t *testing.T) {
 
 }
 
+// TODO convert test to use a stub which checks the body rather than relies
+//      on echoing the output back.z
 func TestReceiveBodyTransform(t *testing.T) {
 	// stand up a mocked rpcdb daemon
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -132,7 +90,7 @@ func TestReceiveBodyTransform(t *testing.T) {
 	m := NewMiddleware("example", handler)
 	w := httptest.NewRecorder()
 
-	req, _ := http.NewRequest("POST", "http://example.com/hello", strings.NewReader("hello"))
+	req, _ := http.NewRequest("POST", "http://example.com/hello", strings.NewReader("hello world"))
 
 	req.Header.Add("Debug-Session", ts.URL)                      // debug session URL
 	req.Header.Add("Debug-Breakpoint", "receive example:/hello") // server receives /hello
@@ -150,7 +108,34 @@ func TestReceiveBodyTransform(t *testing.T) {
 
 
 func TestReplyBodyTransform(t *testing.T) {
-   t.Error("Not yet implemented")
+	// stand up a mocked rpcdb daemon
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("content-type", "application/json")
+		// always respond with a body replacement
+		fmt.Fprintln(w, `{"body":"TRANSFORMED"}`)
+	}))
+	defer ts.Close()
+
+	// hardcode output as "hello world"
+	handler := Stub{200, []byte("hello world")}
+	m := NewMiddleware("example", handler)
+	w := httptest.NewRecorder()
+
+	req, _ := http.NewRequest("POST", "http://example.com/hello", strings.NewReader("ignored"))
+
+	req.Header.Add("Debug-Session", ts.URL)                      // debug session URL
+	req.Header.Add("Debug-Breakpoint", "reply example:/hello") // server receives /hello
+
+	m.ServeHTTP(w, req)
+
+	body, err := ioutil.ReadAll(w.Body)
+	if err != nil {
+		t.Fatalf("error reading response body: %s", err)
+	}
+	if string(body) != "TRANSFORMED" {
+		t.Errorf("Expected body to be transformed to 'TRANSFORMED' got '%s'", body)
+	}
+
 }
 
 type Stub struct {

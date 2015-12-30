@@ -1,6 +1,8 @@
 package rpcdb
 
-import "net/http"
+import (
+	"net/http"
+)
 
 // Middleware represents the middleware
 type middleware struct {
@@ -30,19 +32,26 @@ func (m *middleware) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 func (m middleware) serveDebug(w http.ResponseWriter, req *http.Request) {
-	bps, err := BuildSession(m.name, req.Header)
+	session, err := BuildSession(m.name, req.Header)
 	if err != nil {
 		m.failWithError(w, err)
 	}
 
-	// TODO ensure only match receive once, even if multiple BP's trigger
-	req, err = bps.Receive(req)
+	// receive hook
+	debugRequest, err := session.Receive(req)
 	if err != nil {
 		m.failWithError(w, err)
 		return
 	}
 
-	m.next.ServeHTTP(w, req)
+	// reply hook
+	// TODO consider StartReply to Reply which takes a closure. More ruby than go, but reliable.
+	reply := session.StartReply(w, debugRequest)
+	m.next.ServeHTTP(reply.CaptureWriter(), debugRequest)
+	err = reply.FinishReply()
+	if err != nil {
+		m.failWithError(w, err)
+	}
 }
 
 func isDebug(req *http.Request) bool {

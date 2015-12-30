@@ -3,12 +3,14 @@ package rpcdb
 import (
 	"bytes"
 	"fmt"
-	"go/src/io/ioutil"
-	"go/src/strings"
+	"io/ioutil"
+	"strings"
 	"net/http"
 	"regexp"
 
-	"github.com/docker/docker/vendor/src/github.com/jfrazelle/go/canonical/json"
+	"encoding/json"
+	"net/http/httptest"
+	"io"
 )
 
 var debugBreakpointHeaderKey = http.CanonicalHeaderKey("Debug-Breakpoint")
@@ -47,13 +49,13 @@ func ParseHookType(name string) (HookType, error) {
 }
 
 const (
-	// Receive HookType
+// Receive HookType
 	Receive HookType = iota
-	// Reply HookType
+// Reply HookType
 	Reply
-	// Request HookType
+// Request HookType
 	Request
-	// Response HookType
+// Response HookType
 	Response
 )
 
@@ -94,8 +96,36 @@ type Session struct {
 	ResponseBreakpoints []Breakpoint
 }
 
+// BuildSession builds a session from http header information
+func BuildSession(name string, header http.Header) (Session, error) {
+	session := Session{
+		Name:           name,
+		SessionURL:     header.Get(debugSessionHeaderKey),
+	}
+	breakpoints := header[debugBreakpointHeaderKey]
+	for _, expr := range breakpoints {
+		bp, err := ParseExpression(expr)
+		if err != nil {
+			return session, err
+		}
+		switch bp.Hook {
+		case Receive:
+			session.ReceiveBreakpoints = append(session.ReceiveBreakpoints, bp)
+		case Reply:
+			session.ReplyBreakpoints = append(session.ReplyBreakpoints, bp)
+		case Request:
+			session.RequestBreakpoints = append(session.RequestBreakpoints, bp)
+		case Response:
+			session.ResponseBreakpoints = append(session.ResponseBreakpoints, bp)
+		}
+	}
+
+	return session, nil
+}
+
 // Receive should be called to exercise any receive break points
 func (s Session) Receive(req *http.Request) (*http.Request, error) {
+	// TODO this nested for/if/if is repeated for every BP match test, refactor to common function
 	for _, bp := range s.ReceiveBreakpoints {
 		// TODO handle wildcard service name matches
 		if bp.ServiceName == s.Name {
@@ -129,6 +159,14 @@ func (s Session) Receive(req *http.Request) (*http.Request, error) {
 					return nil, fmt.Errorf("unable to construct replacement body from debugger: %s", err)
 				}
 
+				for k, vs := range req.Header {
+					for _, v := range vs  {
+						newReq.Header.Add(k, v)
+					}
+				}
+
+				// return from inside loop so that we only trigger once, even if
+				// multiple breakpoint definitions match
 				return newReq, nil
 			}
 		}
@@ -137,31 +175,73 @@ func (s Session) Receive(req *http.Request) (*http.Request, error) {
 	return req, nil
 }
 
-// BuildSession builds a session from http header information
-func BuildSession(name string, req http.Header) (Session, error) {
-	session := Session{
-		Name:       name,
-		SessionURL: req.Get(debugSessionHeaderKey),
-	}
-	breakpoints := req[debugBreakpointHeaderKey]
-	for _, expr := range breakpoints {
-		bp, err := ParseExpression(expr)
-		if err != nil {
-			return session, err
-		}
-		switch bp.Hook {
-		case Receive:
-			session.ReceiveBreakpoints = append(session.ReceiveBreakpoints, bp)
-		case Reply:
-			session.ReplyBreakpoints = append(session.ReplyBreakpoints, bp)
-		case Request:
-			session.RequestBreakpoints = append(session.RequestBreakpoints, bp)
-		case Response:
-			session.ResponseBreakpoints = append(session.ResponseBreakpoints, bp)
-		}
+func (s Session) StartReply(w http.ResponseWriter, req *http.Request) ReplyTrap {
+	rep := ReplyTrap{
+		realWriter: w,
+		debugging: false,
+		recorder: httptest.NewRecorder(),
+		session: Session,
 	}
 
-	return session, nil
+	for _, bp := range s.ReceiveBreakpoints {
+		// TODO handle wildcard service name matches
+		if bp.ServiceName == s.Name {
+			// TODO handle wildcard endpoint matches
+			if bp.RPCName == req.URL.Path {
+				rep.debugging = true
+				return rep
+			}
+		}
+	}
+	return rep
+}
+
+// ReplyTrap captures a server reply in order to send it to the
+// debugger for consideration. It operates in two parts, first is
+// capture, second is acting on what was captured. To do the "act on"
+// part `FinishReply` must be invoked.
+type ReplyTrap struct {
+	realWriter http.ResponseWriter
+	recorder   *httptest.ResponseRecorder
+	debugging  bool
+	session    Session
+}
+
+
+// CaptureWriter returns the resposne writer to be used to capture the
+// server reply
+func (r ReplyTrap) CaptureWriter() http.ResponseWriter {
+	if r.debugging {
+		return r.recorder
+	} else {
+		return r.realWriter
+	}
+}
+
+// FinishReply sends the captured reply to the debugger, if needed, and
+// sends anything needed out to on the real reply. If there is no breakpoint
+// on the reply this is a no-op
+func (r ReplyTrap) FinishReply() error {
+	if r.debugging {
+		// r.recorder has the actual recorded response, now we need to
+		// send it to the debugger
+
+
+		// copy response directly from the recorder to the real response
+		// just as filler for now :-)
+		hdr := r.realWriter.Header()
+		for k, vs := range hdr {
+			for _, v := range vs {
+				r.realWriter.Header().Add(k, v)
+			}
+		}
+		r.realWriter.WriteHeader(r.recorder.Code)
+		_, err := io.Copy(r.realWriter, r.recorder.Body)
+		if err != nil {
+			return fmt.Errorf("Error copying recorded body: %s", err)
+		}
+	}
+	return nil
 }
 
 type ReceiveBody struct {
