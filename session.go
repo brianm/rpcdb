@@ -4,13 +4,12 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
-	"strings"
 	"net/http"
 	"regexp"
+	"strings"
 
 	"encoding/json"
 	"net/http/httptest"
-	"io"
 )
 
 var debugBreakpointHeaderKey = http.CanonicalHeaderKey("Debug-Breakpoint")
@@ -49,13 +48,13 @@ func ParseHookType(name string) (HookType, error) {
 }
 
 const (
-// Receive HookType
+	// Receive HookType
 	Receive HookType = iota
-// Reply HookType
+	// Reply HookType
 	Reply
-// Request HookType
+	// Request HookType
 	Request
-// Response HookType
+	// Response HookType
 	Response
 )
 
@@ -99,8 +98,8 @@ type Session struct {
 // BuildSession builds a session from http header information
 func BuildSession(name string, header http.Header) (Session, error) {
 	session := Session{
-		Name:           name,
-		SessionURL:     header.Get(debugSessionHeaderKey),
+		Name:       name,
+		SessionURL: header.Get(debugSessionHeaderKey),
 	}
 	breakpoints := header[debugBreakpointHeaderKey]
 	for _, expr := range breakpoints {
@@ -160,7 +159,7 @@ func (s Session) Receive(req *http.Request) (*http.Request, error) {
 				}
 
 				for k, vs := range req.Header {
-					for _, v := range vs  {
+					for _, v := range vs {
 						newReq.Header.Add(k, v)
 					}
 				}
@@ -175,15 +174,21 @@ func (s Session) Receive(req *http.Request) (*http.Request, error) {
 	return req, nil
 }
 
+type ReceiveBody struct {
+	Body string
+}
+
 func (s Session) StartReply(w http.ResponseWriter, req *http.Request) ReplyTrap {
+	// default config is to not capture, if we find a relevant BP we convert to capture
 	rep := ReplyTrap{
-		realWriter: w,
+		writer:    w,
 		debugging: false,
-		recorder: httptest.NewRecorder(),
-		session: Session,
+		recorder:  httptest.NewRecorder(),
+		session:   s,
 	}
 
-	for _, bp := range s.ReceiveBreakpoints {
+	// TODO this nested for/if/if is repeated for every BP match test, refactor to common function
+	for _, bp := range s.ReplyBreakpoints {
 		// TODO handle wildcard service name matches
 		if bp.ServiceName == s.Name {
 			// TODO handle wildcard endpoint matches
@@ -201,12 +206,11 @@ func (s Session) StartReply(w http.ResponseWriter, req *http.Request) ReplyTrap 
 // capture, second is acting on what was captured. To do the "act on"
 // part `FinishReply` must be invoked.
 type ReplyTrap struct {
-	realWriter http.ResponseWriter
-	recorder   *httptest.ResponseRecorder
-	debugging  bool
-	session    Session
+	writer    http.ResponseWriter
+	recorder  *httptest.ResponseRecorder
+	debugging bool
+	session   Session
 }
-
 
 // CaptureWriter returns the resposne writer to be used to capture the
 // server reply
@@ -214,7 +218,7 @@ func (r ReplyTrap) CaptureWriter() http.ResponseWriter {
 	if r.debugging {
 		return r.recorder
 	} else {
-		return r.realWriter
+		return r.writer
 	}
 }
 
@@ -226,24 +230,46 @@ func (r ReplyTrap) FinishReply() error {
 		// r.recorder has the actual recorded response, now we need to
 		// send it to the debugger
 
+		// just send the body for now, will flesh out debugger protocol
+		// once we validate capture of all four BP types is viable
+		resp, err := http.Post(r.session.SessionURL, "text/plain", r.recorder.Body)
+		if err != nil {
+			return fmt.Errorf("Error making request to debugger: %s: err")
+		}
+
+		debugReplyBody, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("unable to read response from debugger: %s", err)
+		}
+
+		debuggerResponse := ReplyBody{}
+		err = json.Unmarshal(debugReplyBody, &debuggerResponse)
+		if err != nil {
+			return fmt.Errorf("unable to parse response from debugger: %s", err)
+		}
 
 		// copy response directly from the recorder to the real response
 		// just as filler for now :-)
-		hdr := r.realWriter.Header()
+		hdr := r.writer.Header()
 		for k, vs := range hdr {
 			for _, v := range vs {
-				r.realWriter.Header().Add(k, v)
+				r.writer.Header().Add(k, v)
 			}
 		}
-		r.realWriter.WriteHeader(r.recorder.Code)
-		_, err := io.Copy(r.realWriter, r.recorder.Body)
-		if err != nil {
-			return fmt.Errorf("Error copying recorded body: %s", err)
-		}
+		r.writer.WriteHeader(r.recorder.Code)
+
+		/*
+			// code to copy
+			_, err = io.Copy(r.writer, r.recorder.Body)
+			if err != nil {
+				return fmt.Errorf("Error copying recorded body: %s", err)
+			}
+		*/
+		r.writer.Write([]byte(debuggerResponse.Body))
 	}
 	return nil
 }
 
-type ReceiveBody struct {
+type ReplyBody struct {
 	Body string
 }

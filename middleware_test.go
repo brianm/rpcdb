@@ -2,14 +2,14 @@ package rpcdb
 
 import (
 	"fmt"
+	"github.com/justinas/alice"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/http/httptest"
+	"net/http/httputil"
 	"strings"
 	"testing"
-	"github.com/justinas/alice"
-	"log"
-	"net/http/httputil"
 )
 
 func ExampleConstructor() {
@@ -20,7 +20,6 @@ func ExampleConstructor() {
 		log.Panicf("unable to start: %s", err)
 	}
 }
-
 
 func handler(w http.ResponseWriter, req *http.Request) {
 	bytes, err := httputil.DumpRequest(req, true)
@@ -106,7 +105,6 @@ func TestReceiveBodyTransform(t *testing.T) {
 	}
 }
 
-
 func TestReplyBodyTransform(t *testing.T) {
 	// stand up a mocked rpcdb daemon
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -123,7 +121,7 @@ func TestReplyBodyTransform(t *testing.T) {
 
 	req, _ := http.NewRequest("POST", "http://example.com/hello", strings.NewReader("ignored"))
 
-	req.Header.Add("Debug-Session", ts.URL)                      // debug session URL
+	req.Header.Add("Debug-Session", ts.URL)                    // debug session URL
 	req.Header.Add("Debug-Breakpoint", "reply example:/hello") // server receives /hello
 
 	m.ServeHTTP(w, req)
