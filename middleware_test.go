@@ -2,7 +2,6 @@ package rpcdb
 
 import (
 	"fmt"
-	"github.com/justinas/alice"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -10,6 +9,8 @@ import (
 	"net/http/httputil"
 	"strings"
 	"testing"
+
+	"github.com/justinas/alice"
 )
 
 func ExampleConstructor() {
