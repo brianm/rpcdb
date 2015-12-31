@@ -273,3 +273,12 @@ func (r ReplyTrap) FinishReply() error {
 type ReplyBody struct {
 	Body string
 }
+
+
+func (s Session) Request(req *http.Request) (*http.Request, error) {
+	return req, nil
+}
+
+func (s Session) Response(resp *http.Response) (*http.Response, error) {
+	return resp, nil
+}
