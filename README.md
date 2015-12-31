@@ -80,6 +80,13 @@ The general flow of RPC debug hooks is:
 At each step the debugger can manipulate the input and output, inject additional breakpoints, remove breakpoints, or
 terminate the flow.
 
+# Debugger RPC Interfaces
+
+Some thought needs to go into the messages with the debugger from the systems under debug. We probably want to allow
+RPC-system specific payload formats, but need to be able to get and process them all. The indicates some kind of 
+envelope and embedded message handed off to a RPC-specific handler. That is complicated though, compared to a standard
+message format -- way easier to adopt a standard format, but probably less powerful :-/ So, some thought required!
+
 # Debugger Interface
 
 The debugger interface needs to be able to support concurrent RPCs in the system under debug, including multiple
