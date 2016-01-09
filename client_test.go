@@ -1,8 +1,9 @@
 package rpcdb
+
 import (
-	"testing"
-	"net/http"
 	"golang.org/x/net/context"
+	"net/http"
+	"testing"
 )
 
 func TestDebugContext(t *testing.T) {

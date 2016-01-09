@@ -1,9 +1,10 @@
 package rpcdb
+
 import (
-	"net/http"
 	"fmt"
 	"golang.org/x/net/context"
 	"io"
+	"net/http"
 )
 
 const sessionKey = "github.com/brianm/rpcdb:debug_session_key"
@@ -49,4 +50,3 @@ func ExtractSession(ctx context.Context) (Session, bool) {
 	s, ok := ctx.Value(sessionKey).(Session)
 	return s, ok
 }
-

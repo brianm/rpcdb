@@ -274,7 +274,6 @@ type ReplyBody struct {
 	Body string
 }
 
-
 func (s Session) Request(req *http.Request) (*http.Request, error) {
 	return req, nil
 }
