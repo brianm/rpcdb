@@ -2,76 +2,51 @@ package rpcdb
 import (
 	"net/http"
 	"fmt"
+	"golang.org/x/net/context"
+	"io"
 )
 
+const sessionKey = "github.com/brianm/rpcdb:debug_session_key"
 
-// DebugTransport is an http.RoundTripper which supports rpcdb. It breaks the guidance
-// on RoundTripper, which reads:
-//
-//     RoundTrip should not attempt to handle higher-level
-//     protocol details such as redirects, authentication,
-//     or cookies.
-//
-//     RoundTrip should not modify the request, except for
-//     consuming and closing the Body, including on errors. The
-//     request's URL and Header fields are guaranteed to be
-//     initialized.
-//
-// However, I am unable to find a reasonable way of accomplishing this without breaking
-// that guidance. Apologies in advance if this causes unexpected issues!
-type DebugTransport struct {
-	Name      string
-	Transport http.RoundTripper
+type Client struct {
+	http *http.Client
 }
 
-// NewTransport builds a new DebugTransport, wrapping an existing round tripper, if
-// the transport is nil, uses http.DefaultTransport
-func NewTransport(name string, transport http.RoundTripper) DebugTransport {
-	if transport == nil {
-		transport = http.DefaultTransport
-	}
-	return DebugTransport{
-		Name: name,
-		Transport: transport,
-	}
+func Wrap(hc *http.Client) Client {
+	return Client{hc}
 }
 
-// RoundTrip provides the http.RoundTripper implementation which short circuits it as needed
-// to provide debug functionality
-func (t DebugTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	// TODO fail quietly, log, or fail hard -- which is correct here, in all cases?
-	//      for now, filing hard
+func (c Client) Do(ctx context.Context, req *http.Request) (resp *http.Response, err error) {
+	return c.http.Do(req)
+}
 
-	session, err := BuildSession(t.Name, req.Header)
+func (c Client) Get(ctx context.Context, url string) (resp *http.Response, err error) {
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return nil, fmt.Errorf("Error building debug session: %s", err)
+		return nil, fmt.Errorf("unable to create request: %s", err)
 	}
-
-	// handle request
-	newReq, err := session.Request(req)
-	if err != nil {
-		return nil, fmt.Errorf("Error debugging request: %s", err)
-	}
-
-
-	// handle response
-	resp, err := t.Transport.RoundTrip(newReq)
-	newResp, err := session.Response(resp)
-	if err != nil {
-		return nil, fmt.Errorf("Error debugging response: %s", err)
-	}
-
-	return newResp, nil
+	return c.Do(ctx, req)
 }
 
-
-func (t DebugTransport) CancelRequest(req *http.Request) {
-	// implementation cribbed and adapted from net/http
-	type canceler interface {
-		CancelRequest(*http.Request)
+func (c Client) Post(ctx context.Context, url string, bodyType string, body io.Reader) (resp *http.Response, err error) {
+	req, err := http.NewRequest("POST", url, body)
+	if err != nil {
+		return nil, fmt.Errorf("unable to make request: %s", err)
 	}
-	tr, ok := t.Transport.(canceler)
-	if ok {
-		tr.CancelRequest(req)
-	}
+	req.Header.Add("Content-Type", bodyType)
+	return c.Do(ctx, req)
 }
+
+func AttachSession(ctx context.Context, name string, req *http.Request) (context.Context, error) {
+	session, err := BuildSession(name, req.Header)
+	if err != nil {
+		return ctx, err
+	}
+	return context.WithValue(ctx, sessionKey, session), nil
+}
+
+func ExtractSession(ctx context.Context) (Session, bool) {
+	s, ok := ctx.Value(sessionKey).(Session)
+	return s, ok
+}
+
