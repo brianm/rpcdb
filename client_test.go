@@ -26,7 +26,7 @@ func TestDebugContext(t *testing.T) {
 	}
 }
 
-func TestReplyHook(t *testing.T) {
+func TestResponseHook(t *testing.T) {
 	// target of client request
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gores.String(w, 200, "hello world")
@@ -43,7 +43,9 @@ func TestReplyHook(t *testing.T) {
 	// sadly, easiest to make session this way!
 	// TODO make instantiating a session less convoluted!
 	req, _ := http.NewRequest("GET", "/", nil)
-	req.Header.Add("debug-breakpoint", "reply example:*")
+
+	// TODO client breakpoint definitions are on call to, or call from?
+	req.Header.Add("debug-breakpoint", "response example:*")
 	req.Header.Add("debug-session", ds.URL)
 	session, _ := BuildSession("example", req.Header)
 

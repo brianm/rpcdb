@@ -31,6 +31,12 @@ func NewClient(hc *http.Client) DebugClient {
 }
 
 func (c DebugClient) Do(ctx context.Context, req *http.Request) (resp *http.Response, err error) {
+
+	// TODO hook request breakpoints
+
+
+	// TODO hook response breakpoints
+
 	return c.http.Do(req)
 }
 
