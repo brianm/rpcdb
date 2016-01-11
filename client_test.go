@@ -26,7 +26,7 @@ func TestDebugContext(t *testing.T) {
 	}
 }
 
-func TestReply(t *testing.T) {
+func TestReplyHook(t *testing.T) {
 	// target of client request
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gores.String(w, 200, "hello world")
