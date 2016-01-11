@@ -1,10 +1,10 @@
 package rpcdb
 
 import (
-	"golang.org/x/net/context"
-	"net/http"
 	"fmt"
+	"golang.org/x/net/context"
 	"io"
+	"net/http"
 )
 
 // TODO use proper ctxhttp package

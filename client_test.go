@@ -1,13 +1,13 @@
 package rpcdb
 
 import (
-	"golang.org/x/net/context"
-	"net/http"
-	"testing"
-	"net/http/httptest"
-	"github.com/alioygur/gores"
-	"io/ioutil"
 	"fmt"
+	"github.com/alioygur/gores"
+	"golang.org/x/net/context"
+	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
+	"testing"
 )
 
 func TestDebugContext(t *testing.T) {
@@ -46,7 +46,6 @@ func TestReply(t *testing.T) {
 	req.Header.Add("debug-breakpoint", "reply example:*")
 	req.Header.Add("debug-session", ds.URL)
 	session, _ := BuildSession("example", req.Header)
-
 
 	c := NewClient(http.DefaultClient)
 
