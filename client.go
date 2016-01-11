@@ -1,27 +1,40 @@
 package rpcdb
 
 import (
-	"fmt"
 	"golang.org/x/net/context"
-	"io"
 	"net/http"
+	"fmt"
+	"io"
 )
+
+// TODO use proper ctxhttp package
+// TODO refactor client to use arbitrary interceptors, with debug as an interceptor
+// TODO move ^^ generic client into its own package
 
 const sessionKey = "github.com/brianm/rpcdb:debug_session_key"
 
-type Client struct {
+func AttachSession(ctx context.Context, session Session) context.Context {
+	return context.WithValue(ctx, sessionKey, session)
+}
+
+func ExtractSession(ctx context.Context) (Session, bool) {
+	s, ok := ctx.Value(sessionKey).(Session)
+	return s, ok
+}
+
+type DebugClient struct {
 	http *http.Client
 }
 
-func Wrap(hc *http.Client) Client {
-	return Client{hc}
+func NewClient(hc *http.Client) DebugClient {
+	return DebugClient{hc}
 }
 
-func (c Client) Do(ctx context.Context, req *http.Request) (resp *http.Response, err error) {
+func (c DebugClient) Do(ctx context.Context, req *http.Request) (resp *http.Response, err error) {
 	return c.http.Do(req)
 }
 
-func (c Client) Get(ctx context.Context, url string) (resp *http.Response, err error) {
+func (c DebugClient) Get(ctx context.Context, url string) (resp *http.Response, err error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create request: %s", err)
@@ -29,24 +42,11 @@ func (c Client) Get(ctx context.Context, url string) (resp *http.Response, err e
 	return c.Do(ctx, req)
 }
 
-func (c Client) Post(ctx context.Context, url string, bodyType string, body io.Reader) (resp *http.Response, err error) {
+func (c DebugClient) Post(ctx context.Context, url string, bodyType string, body io.Reader) (resp *http.Response, err error) {
 	req, err := http.NewRequest("POST", url, body)
 	if err != nil {
 		return nil, fmt.Errorf("unable to make request: %s", err)
 	}
 	req.Header.Add("Content-Type", bodyType)
 	return c.Do(ctx, req)
-}
-
-func AttachSession(ctx context.Context, name string, req *http.Request) (context.Context, error) {
-	session, err := BuildSession(name, req.Header)
-	if err != nil {
-		return ctx, err
-	}
-	return context.WithValue(ctx, sessionKey, session), nil
-}
-
-func ExtractSession(ctx context.Context) (Session, bool) {
-	s, ok := ctx.Value(sessionKey).(Session)
-	return s, ok
 }
