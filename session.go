@@ -10,7 +10,6 @@ import (
 
 	"encoding/json"
 	"net/http/httptest"
-	"log"
 )
 
 var debugBreakpointHeaderKey = http.CanonicalHeaderKey("Debug-Breakpoint")
@@ -49,13 +48,13 @@ func ParseHookType(name string) (HookType, error) {
 }
 
 const (
-// Receive HookType
+	// Receive HookType
 	Receive HookType = iota
-// Reply HookType
+	// Reply HookType
 	Reply
-// Request HookType
+	// Request HookType
 	Request
-// Response HookType
+	// Response HookType
 	Response
 )
 
@@ -276,6 +275,7 @@ type ReplyBody struct {
 	Body string
 }
 
+// TODO implement this!
 func (s Session) Request(req *http.Request) (*http.Request, error) {
 	return req, nil
 }

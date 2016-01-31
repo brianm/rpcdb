@@ -62,5 +62,42 @@ func TestResponseHook(t *testing.T) {
 	if string(body) != "TRANSFORMED" {
 		t.Errorf("expected body to be TRANSFORMED, it was '%s'", body)
 	}
+}
 
+func _TestRequestHook(t *testing.T) {
+	// target of client request
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gores.String(w, 200, "hello world")
+	}))
+	defer ts.Close()
+
+	// debug server transforming body
+	ds := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gores.JSON(w, 200, ResponseBody{
+			Body: "TRANSFORMED",
+		})
+	}))
+	defer ds.Close()
+
+	// sadly, easiest to make session this way!
+	// TODO make instantiating a session less convoluted!
+	// TODO client breakpoint definitions are on call to, or call from?
+	req, _ := http.NewRequest("GET", "/", nil)
+	req.Header.Add("debug-breakpoint", "request example:/")
+	req.Header.Add("debug-session", ds.URL)
+	session, _ := BuildSession("example", req.Header)
+
+	c := NewClient(http.DefaultClient)
+
+	ctx := AttachSession(context.Background(), session)
+	r, err := c.Get(ctx, fmt.Sprintf("%s/", ts.URL))
+	if err != nil {
+		t.Errorf("error issuing request: %s", err)
+	}
+	defer r.Body.Close()
+
+	body, _ := ioutil.ReadAll(r.Body)
+	if string(body) != "TRANSFORMED" {
+		t.Errorf("expected body to be TRANSFORMED, it was '%s'", body)
+	}
 }
