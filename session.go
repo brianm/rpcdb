@@ -213,7 +213,7 @@ type ReplyTrap struct {
 	session   Session
 }
 
-// CaptureWriter returns the resposne writer to be used to capture the
+// CaptureWriter returns the response writer to be used to capture the
 // server reply
 func (r ReplyTrap) CaptureWriter() http.ResponseWriter {
 	if r.debugging {
@@ -221,6 +221,10 @@ func (r ReplyTrap) CaptureWriter() http.ResponseWriter {
 	} else {
 		return r.writer
 	}
+}
+
+type ReplyBody struct {
+	Body string
 }
 
 // FinishReply sends the captured reply to the debugger, if needed, and
@@ -271,15 +275,6 @@ func (r ReplyTrap) FinishReply() error {
 	return nil
 }
 
-type ReplyBody struct {
-	Body string
-}
-
-// TODO implement this!
-func (s Session) Request(req *http.Request) (*http.Request, error) {
-	return req, nil
-}
-
 type ResponseBody struct {
 	Body string
 }
@@ -325,4 +320,49 @@ func (s Session) Response(req *http.Request, resp *http.Response) (*http.Respons
 		}
 	}
 	return resp, nil
+}
+
+type RequestBody struct {
+	Body string
+}
+
+// TODO implement this!
+func (s Session) Request(req *http.Request) (*http.Request, error) {
+	for _, bp := range s.RequestBreakpoints {
+		// TODO handle wildcard service name matches
+		if bp.ServiceName == s.Name {
+			// TODO handle wildcard endpoint matches
+			if bp.RPCName == req.URL.Path {
+				// we have a matched breakpoint!  (even if broken matching logic)
+
+				// read the request
+				responseBody, err := ioutil.ReadAll(req.Body)
+				defer req.Body.Close()
+				if err != nil {
+					return nil, fmt.Errorf("unable to read request body: %s", err)
+				}
+
+				debugResponse, err := http.Post(s.SessionURL, "text/plain", bytes.NewReader(responseBody))
+				if err != nil {
+					return nil, fmt.Errorf("error calling debug server: %s", err)
+				}
+
+				debugResponseBody, err := ioutil.ReadAll(debugResponse.Body)
+				if err != nil {
+					return nil, fmt.Errorf("unable to read response from debugger: %s", err)
+				}
+				defer debugResponse.Body.Close()
+
+				rb := ResponseBody{}
+				err = json.Unmarshal(debugResponseBody, &rb)
+				if err != nil {
+					return nil, fmt.Errorf("unable to parse response from debugger: %s", err)
+				}
+
+				req.Body = ioutil.NopCloser(strings.NewReader(rb.Body))
+				return req, nil
+			}
+		}
+	}
+	return req, nil
 }

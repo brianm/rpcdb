@@ -33,9 +33,12 @@ func NewClient(hc *http.Client) DebugClient {
 func (c DebugClient) Do(ctx context.Context, req *http.Request) (*http.Response, error) {
 	session, ok := ExtractSession(ctx)
 
-	// TODO hook request breakpoints
+	newReq, err := session.Request(req)
+	if err != nil {
+		return nil, err
+	}
 
-	resp, err := c.http.Do(req)
+	resp, err := c.http.Do(newReq)
 	if err != nil {
 		return resp, err
 	}

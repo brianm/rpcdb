@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"strings"
 )
 
 func TestDebugContext(t *testing.T) {
@@ -64,16 +65,18 @@ func TestResponseHook(t *testing.T) {
 	}
 }
 
-func _TestRequestHook(t *testing.T) {
+func TestRequestHook(t *testing.T) {
 	// target of client request
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gores.String(w, 200, "hello world")
+		buf, _ := ioutil.ReadAll(r.Body)
+		defer r.Body.Close()
+		gores.String(w, 200, string(buf))
 	}))
 	defer ts.Close()
 
 	// debug server transforming body
 	ds := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gores.JSON(w, 200, ResponseBody{
+		gores.JSON(w, 200, RequestBody{
 			Body: "TRANSFORMED",
 		})
 	}))
@@ -90,7 +93,7 @@ func _TestRequestHook(t *testing.T) {
 	c := NewClient(http.DefaultClient)
 
 	ctx := AttachSession(context.Background(), session)
-	r, err := c.Get(ctx, fmt.Sprintf("%s/", ts.URL))
+	r, err := c.Post(ctx, fmt.Sprintf("%s/", ts.URL), "text/plain", strings.NewReader("hello world"))
 	if err != nil {
 		t.Errorf("error issuing request: %s", err)
 	}
