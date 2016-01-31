@@ -10,6 +10,7 @@ import (
 
 	"encoding/json"
 	"net/http/httptest"
+	"log"
 )
 
 var debugBreakpointHeaderKey = http.CanonicalHeaderKey("Debug-Breakpoint")
@@ -48,13 +49,13 @@ func ParseHookType(name string) (HookType, error) {
 }
 
 const (
-	// Receive HookType
+// Receive HookType
 	Receive HookType = iota
-	// Reply HookType
+// Reply HookType
 	Reply
-	// Request HookType
+// Request HookType
 	Request
-	// Response HookType
+// Response HookType
 	Response
 )
 
@@ -134,6 +135,7 @@ func (s Session) Receive(req *http.Request) (*http.Request, error) {
 				if err != nil {
 					return nil, fmt.Errorf("error reading body: %s", err)
 				}
+				defer req.Body.Close()
 
 				resp, err := http.Post(s.SessionURL, "text/plain", bytes.NewReader(requestBody))
 				if err != nil {
@@ -234,7 +236,7 @@ func (r ReplyTrap) FinishReply() error {
 		// once we validate capture of all four BP types is viable
 		resp, err := http.Post(r.session.SessionURL, "text/plain", r.recorder.Body)
 		if err != nil {
-			return fmt.Errorf("Error making request to debugger: %s: err")
+			return fmt.Errorf("Error making request to debugger: %s", err)
 		}
 
 		debugReplyBody, err := ioutil.ReadAll(resp.Body)
@@ -278,6 +280,49 @@ func (s Session) Request(req *http.Request) (*http.Request, error) {
 	return req, nil
 }
 
-func (s Session) Response(resp *http.Response) (*http.Response, error) {
+type ResponseBody struct {
+	Body string
+}
+
+func (s Session) Response(req *http.Request, resp *http.Response) (*http.Response, error) {
+	// TODO this breakpoint matching logic is totally broken
+	// TODO it matches on current service and name being invoked, not name
+	// TODO of thing being hit, which is what it should, but how do we *know* that name?
+	for _, bp := range s.ResponseBreakpoints {
+		// TODO handle wildcard service name matches
+		if bp.ServiceName == s.Name {
+			// TODO handle wildcard endpoint matches
+			if bp.RPCName == req.URL.Path {
+				// we have a matched breakpoint!  (even if broken matching logic)
+
+				// read the response
+				responseBody, err := ioutil.ReadAll(resp.Body)
+				defer resp.Body.Close()
+				if err != nil {
+					return nil, fmt.Errorf("unable to read response body: %s", err)
+				}
+
+				debugResponse, err := http.Post(s.SessionURL, "text/plain", bytes.NewReader(responseBody))
+				if err != nil {
+					return nil, fmt.Errorf("error calling debug server: %s", err)
+				}
+
+				debugResponseBody, err := ioutil.ReadAll(debugResponse.Body)
+				if err != nil {
+					return nil, fmt.Errorf("unable to read response from debugger: %s", err)
+				}
+				defer debugResponse.Body.Close()
+
+				rb := ResponseBody{}
+				err = json.Unmarshal(debugResponseBody, &rb)
+				if err != nil {
+					return nil, fmt.Errorf("unable to parse response from debugger: %s", err)
+				}
+
+				resp.Body = ioutil.NopCloser(strings.NewReader(rb.Body))
+				return resp, nil
+			}
+		}
+	}
 	return resp, nil
 }

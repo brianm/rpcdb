@@ -30,14 +30,20 @@ func NewClient(hc *http.Client) DebugClient {
 	return DebugClient{hc}
 }
 
-func (c DebugClient) Do(ctx context.Context, req *http.Request) (resp *http.Response, err error) {
+func (c DebugClient) Do(ctx context.Context, req *http.Request) (*http.Response, error) {
+	session, ok := ExtractSession(ctx)
 
 	// TODO hook request breakpoints
 
-
-	// TODO hook response breakpoints
-
-	return c.http.Do(req)
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return resp, err
+	}
+	if ok {
+		return session.Response(req, resp)
+	} else {
+		return resp, nil
+	}
 }
 
 func (c DebugClient) Get(ctx context.Context, url string) (resp *http.Response, err error) {
