@@ -8,6 +8,7 @@ import (
 )
 
 // TODO use proper ctxhttp package
+// 		need this to fiddle timeouts properly
 // TODO refactor client to use arbitrary interceptors, with debug as an interceptor
 // TODO move ^^ generic client into its own package
 
