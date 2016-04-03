@@ -82,7 +82,6 @@ func TestRequestHook(t *testing.T) {
 	}))
 	defer ds.Close()
 
-	// sadly, easiest to make session this way!
 	// TODO make instantiating a session less convoluted!
 	// TODO client breakpoint definitions are on call to, or call from?
 	req, _ := http.NewRequest("GET", "/", nil)
